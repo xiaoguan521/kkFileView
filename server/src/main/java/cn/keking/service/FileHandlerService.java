@@ -6,10 +6,7 @@ import cn.keking.model.FileType;
 import cn.keking.service.cache.CacheService;
 import cn.keking.utils.KkFileUtils;
 import cn.keking.utils.WebUtils;
-import com.aspose.cad.CodePages;
 import com.aspose.cad.Color;
-import com.aspose.cad.Image;
-import com.aspose.cad.LoadOptions;
 import com.aspose.cad.fileformats.cad.CadDrawTypeMode;
 import com.aspose.cad.imageoptions.CadRasterizationOptions;
 import com.aspose.cad.imageoptions.PdfOptions;
@@ -17,17 +14,23 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.tools.imageio.ImageIOUtil;
+import org.ofdrw.converter.ImageMaker;
+import org.ofdrw.reader.OFDReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import javax.imageio.ImageIO;
 import javax.servlet.http.HttpServletRequest;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -152,9 +155,9 @@ public class FileHandlerService {
                 sb.append(line);
             }
             // 添加sheet控制头
-            sb.append("<script src=\"js/jquery-3.6.1.min.js\" type=\"text/javascript\"></script>");
+            sb.append("<script src=\"js/jquery-3.0.0.min.js\" type=\"text/javascript\"></script>");
             sb.append("<script src=\"js/excel.header.js\" type=\"text/javascript\"></script>");
-            sb.append("<link rel=\"stylesheet\" href=\"bootstrap/css/xlsx.css\">");
+            sb.append("<link rel=\"stylesheet\" href=\"bootstrap/css/bootstrap.min.css\">");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -194,9 +197,6 @@ public class FileHandlerService {
         }
         try {
             File pdfFile = new File(pdfFilePath);
-            if (!pdfFile.exists()) {
-                return null;
-            }
             PDDocument doc = PDDocument.load(pdfFile);
             int pageCount = doc.getNumberOfPages();
             PDFRenderer pdfRenderer = new PDFRenderer(doc);
@@ -222,6 +222,56 @@ public class FileHandlerService {
         }
         return imageUrls;
     }
+    /**
+     *  ofd文件转换成jpg图片集
+     * @param pdfFilePath ofd文件路径
+     * @param pdfName ofd文件名称
+     * @param baseUrl 基础访问地址
+     * @return 图片访问集合
+     */
+    public  List<String> ofdtojpg(String pdfFilePath, String pdfName, String baseUrl){
+        List<String> imageUrls = new ArrayList<>();
+        Integer imageCount = this.getConvertedPdfImage(pdfFilePath);
+        String imageFileSuffix = ".jpg";
+        String pdfFolder = pdfName.substring(0, pdfName.length() - 4);
+        String urlPrefix;
+        try {
+            urlPrefix = baseUrl + URLEncoder.encode(pdfFolder, uriEncoding).replaceAll("\\+", "%20");
+        } catch (UnsupportedEncodingException e) {
+            logger.error("UnsupportedEncodingException", e);
+            urlPrefix = baseUrl + pdfFolder;
+        }
+        if (imageCount != null && imageCount > 0) {
+            for (int i = 0; i < imageCount; i++) {
+                imageUrls.add(urlPrefix + "/" + i + imageFileSuffix);
+            }
+            return imageUrls;
+        }
+        //Path src = Paths.get(pdfFilePath);
+
+        int index = pdfFilePath.lastIndexOf(".");
+        String folder = pdfFilePath.substring(0, index);
+        Path folderpath = Paths.get(folder);
+        logger.info("create folder:{}",folder);
+        try {
+            Files.createDirectory(folderpath);//创建文件夹
+        } catch (IOException e1) {
+            logger.error("create folder error", e1);
+        }
+        try(OFDReader reader = new OFDReader(pdfFilePath);) {
+            ImageMaker imageMaker = new ImageMaker(reader, 7);
+            for (int i = 0; i < imageMaker.pageSize(); i++) {
+                BufferedImage image = imageMaker.makePage(i);
+                Path dist = Paths.get(folder, i + imageFileSuffix);
+                ImageIO.write(image, "JPG", dist.toFile());
+                imageUrls.add(urlPrefix + "/" + i + imageFileSuffix);
+            }
+            this.addConvertedPdfImage(pdfFilePath, imageMaker.pageSize());
+        }catch (Exception e) {
+            logger.error("ofd to jpg error", e);
+        }
+        return imageUrls;
+    }
 
     /**
      * cad文件转pdf
@@ -230,34 +280,29 @@ public class FileHandlerService {
      * @return 转换是否成功
      */
     public boolean cadToPdf(String inputFilePath, String outputFilePath)  {
-        File outputFile = new File(outputFilePath);
-        LoadOptions opts = new LoadOptions();
-        opts.setSpecifiedEncoding(CodePages.SimpChinese);
-        com.aspose.cad.Image cadImage = Image.load(inputFilePath, opts);
+        com.aspose.cad.Image cadImage = com.aspose.cad.Image.load(inputFilePath);
         CadRasterizationOptions cadRasterizationOptions = new CadRasterizationOptions();
+        cadRasterizationOptions.setLayouts(new String[]{"Model"});
+        cadRasterizationOptions.setNoScaling(true);
         cadRasterizationOptions.setBackgroundColor(Color.getWhite());
-        cadRasterizationOptions.setPageWidth(1400);
-        cadRasterizationOptions.setPageHeight(650);
+        cadRasterizationOptions.setPageWidth(cadImage.getWidth());
+        cadRasterizationOptions.setPageHeight(cadImage.getHeight());
+        cadRasterizationOptions.setPdfProductLocation("center");
         cadRasterizationOptions.setAutomaticLayoutsScaling(true);
-        cadRasterizationOptions.setNoScaling (false);
-        cadRasterizationOptions.setDrawType(1);
+        cadRasterizationOptions.setDrawType(CadDrawTypeMode.UseObjectColor);
         PdfOptions pdfOptions = new PdfOptions();
         pdfOptions.setVectorRasterizationOptions(cadRasterizationOptions);
+        File outputFile = new File(outputFilePath);
         OutputStream stream;
         try {
             stream = new FileOutputStream(outputFile);
             cadImage.save(stream, pdfOptions);
-            stream.close();
             cadImage.close();
             return true;
-        } catch (IOException e) {
+        } catch (FileNotFoundException e) {
             logger.error("PDFFileNotFoundException，inputFilePath：{}", inputFilePath, e);
-        }finally{
-            if(cadImage != null){   //关闭
-                cadImage.close();
-            }
+            return false;
         }
-        return false;
     }
 
     /**
@@ -281,14 +326,13 @@ public class FileHandlerService {
             type = FileType.typeFromUrl(url);
             suffix = WebUtils.suffixFromUrl(url);
         }
-        if (url.contains("?fileKey=")) {
-            attribute.setSkipDownLoad(true);
-        }
-        url = WebUtils.encodeUrlFileName(url);
-       fileName =  KkFileUtils.htmlEscape(fileName);  //文件名处理
+        //if (url.contains("?fileKey=")) {
+        //    attribute.setSkipDownLoad(true);
+        //}
         attribute.setType(type);
         attribute.setName(fileName);
         attribute.setSuffix(suffix);
+        //url = WebUtils.encodeUrlFileName(url);
         attribute.setUrl(url);
         if (req != null) {
             String officePreviewType = req.getParameter("officePreviewType");
@@ -300,22 +344,11 @@ public class FileHandlerService {
                 attribute.setFileKey(fileKey);
             }
 
-            String tifPreviewType = req.getParameter("tifPreviewType");
-            if (StringUtils.hasText(tifPreviewType)) {
-                attribute.setTifPreviewType(tifPreviewType);
-            }
-
-            String filePassword = req.getParameter("filePassword");
-            if (StringUtils.hasText(filePassword)) {
-                attribute.setFilePassword(filePassword);
-            }
-
-            String userToken = req.getParameter("userToken");
-            if (StringUtils.hasText(userToken)) {
-                attribute.setUserToken(userToken);
-            }
+            //String tifPreviewType = req.getParameter("tifPreviewType");
+            //if (StringUtils.hasText(tifPreviewType)) {
+            //    attribute.setTifPreviewType(tifPreviewType);
+            //}
         }
-
         return attribute;
     }
 

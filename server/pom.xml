@@ -76,6 +76,10 @@
                     <artifactId>poi</artifactId>
                     <groupId>org.apache.poi</groupId>
                 </exclusion>
+                <exclusion>
+                    <artifactId>dom4j</artifactId>
+                    <groupId>dom4j</groupId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -213,6 +217,13 @@
             <version>${opencv.version}</version>
             <classifier>linux-x86_64</classifier>
         </dependency>
+        <!-- ofd转换pdf -->
+        <dependency>
+            <groupId>org.ofdrw</groupId>
+            <artifactId>ofdrw-converter</artifactId>
+            <version>1.19.1</version>
+        </dependency>
+
         <dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>opencv</artifactId>
