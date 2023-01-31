@@ -14,17 +14,23 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.tools.imageio.ImageIOUtil;
+import org.ofdrw.converter.ImageMaker;
+import org.ofdrw.reader.OFDReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import javax.imageio.ImageIO;
 import javax.servlet.http.HttpServletRequest;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -216,6 +222,56 @@ public class FileHandlerService {
         }
         return imageUrls;
     }
+    /**
+     *  ofd文件转换成jpg图片集
+     * @param pdfFilePath ofd文件路径
+     * @param pdfName ofd文件名称
+     * @param baseUrl 基础访问地址
+     * @return 图片访问集合
+     */
+    public  List<String> ofdtojpg(String pdfFilePath, String pdfName, String baseUrl){
+        List<String> imageUrls = new ArrayList<>();
+        Integer imageCount = this.getConvertedPdfImage(pdfFilePath);
+        String imageFileSuffix = ".jpg";
+        String pdfFolder = pdfName.substring(0, pdfName.length() - 4);
+        String urlPrefix;
+        try {
+            urlPrefix = baseUrl + URLEncoder.encode(pdfFolder, uriEncoding).replaceAll("\\+", "%20");
+        } catch (UnsupportedEncodingException e) {
+            logger.error("UnsupportedEncodingException", e);
+            urlPrefix = baseUrl + pdfFolder;
+        }
+        if (imageCount != null && imageCount > 0) {
+            for (int i = 0; i < imageCount; i++) {
+                imageUrls.add(urlPrefix + "/" + i + imageFileSuffix);
+            }
+            return imageUrls;
+        }
+        //Path src = Paths.get(pdfFilePath);
+
+        int index = pdfFilePath.lastIndexOf(".");
+        String folder = pdfFilePath.substring(0, index);
+        Path folderpath = Paths.get(folder);
+        logger.info("create folder:{}",folder);
+        try {
+            Files.createDirectory(folderpath);//创建文件夹
+        } catch (IOException e1) {
+            logger.error("create folder error", e1);
+        }
+        try(OFDReader reader = new OFDReader(pdfFilePath);) {
+            ImageMaker imageMaker = new ImageMaker(reader, 7);
+            for (int i = 0; i < imageMaker.pageSize(); i++) {
+                BufferedImage image = imageMaker.makePage(i);
+                Path dist = Paths.get(folder, i + imageFileSuffix);
+                ImageIO.write(image, "JPG", dist.toFile());
+                imageUrls.add(urlPrefix + "/" + i + imageFileSuffix);
+            }
+            this.addConvertedPdfImage(pdfFilePath, imageMaker.pageSize());
+        }catch (Exception e) {
+            logger.error("ofd to jpg error", e);
+        }
+        return imageUrls;
+    }
 
     /**
      * cad文件转pdf
@@ -270,9 +326,13 @@ public class FileHandlerService {
             type = FileType.typeFromUrl(url);
             suffix = WebUtils.suffixFromUrl(url);
         }
+        //if (url.contains("?fileKey=")) {
+        //    attribute.setSkipDownLoad(true);
+        //}
         attribute.setType(type);
         attribute.setName(fileName);
         attribute.setSuffix(suffix);
+        //url = WebUtils.encodeUrlFileName(url);
         attribute.setUrl(url);
         if (req != null) {
             String officePreviewType = req.getParameter("officePreviewType");
@@ -283,6 +343,11 @@ public class FileHandlerService {
             if (StringUtils.hasText(fileKey)) {
                 attribute.setFileKey(fileKey);
             }
+
+            //String tifPreviewType = req.getParameter("tifPreviewType");
+            //if (StringUtils.hasText(tifPreviewType)) {
+            //    attribute.setTifPreviewType(tifPreviewType);
+            //}
         }
         return attribute;
     }
