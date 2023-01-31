@@ -1,7 +1,6 @@
 package cn.keking.config;
 
-import org.artofsolving.jodconverter.office.OfficeUtils;
-import org.artofsolving.jodconverter.util.ConfigUtils;
+import cn.keking.utils.ConfigUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -47,13 +46,19 @@ public class ConfigRefreshComponent {
                 String configFilePath = ConfigUtils.getCustomizedConfigPath();
                 String baseUrl;
                 String trustHost;
+                String pdfPresentationModeDisable;
+                String pdfOpenFileDisable;
+                String pdfPrintDisable;
                 String pdfDownloadDisable;
+                String pdfBookmarkDisable;
                 boolean fileUploadDisable;
+                String tifPreviewType;
+
                 while (true) {
                     FileReader fileReader = new FileReader(configFilePath);
                     BufferedReader bufferedReader = new BufferedReader(fileReader);
                     properties.load(bufferedReader);
-                    OfficeUtils.restorePropertiesFromEnvFormat(properties);
+                    ConfigUtils.restorePropertiesFromEnvFormat(properties);
                     cacheEnabled = Boolean.parseBoolean(properties.getProperty("cache.enabled", ConfigConstants.DEFAULT_CACHE_ENABLED));
                     text = properties.getProperty("simText", ConfigConstants.DEFAULT_TXT_TYPE);
                     media = properties.getProperty("media", ConfigConstants.DEFAULT_MEDIA_TYPE);
@@ -66,8 +71,14 @@ public class ConfigRefreshComponent {
                     mediaArray = media.split(",");
                     baseUrl = properties.getProperty("base.url", ConfigConstants.DEFAULT_BASE_URL);
                     trustHost = properties.getProperty("trust.host", ConfigConstants.DEFAULT_TRUST_HOST);
+                    pdfPresentationModeDisable = properties.getProperty("pdf.presentationMode.disable", ConfigConstants.DEFAULT_PDF_PRESENTATION_MODE_DISABLE);
+                    pdfOpenFileDisable = properties.getProperty("pdf.openFile.disable", ConfigConstants.DEFAULT_PDF_OPEN_FILE_DISABLE);
+                    pdfPrintDisable = properties.getProperty("pdf.print.disable", ConfigConstants.DEFAULT_PDF_PRINT_DISABLE);
                     pdfDownloadDisable = properties.getProperty("pdf.download.disable", ConfigConstants.DEFAULT_PDF_DOWNLOAD_DISABLE);
+                    pdfBookmarkDisable = properties.getProperty("pdf.bookmark.disable", ConfigConstants.DEFAULT_PDF_BOOKMARK_DISABLE);
                     fileUploadDisable = Boolean.parseBoolean(properties.getProperty("file.upload.disable", ConfigConstants.DEFAULT_FILE_UPLOAD_DISABLE));
+                    tifPreviewType = properties.getProperty("tif.preview.type", ConfigConstants.DEFAULT_TIF_PREVIEW_TYPE);
+
                     ConfigConstants.setCacheEnabledValueValue(cacheEnabled);
                     ConfigConstants.setSimTextValue(textArray);
                     ConfigConstants.setMediaValue(mediaArray);
@@ -78,8 +89,13 @@ public class ConfigRefreshComponent {
                     ConfigConstants.setBaseUrlValue(baseUrl);
                     ConfigConstants.setTrustHostValue(trustHost);
                     ConfigConstants.setOfficePreviewSwitchDisabledValue(officePreviewSwitchDisabled);
+                    ConfigConstants.setPdfPresentationModeDisableValue(pdfPresentationModeDisable);
+                    ConfigConstants.setPdfOpenFileDisableValue(pdfOpenFileDisable);
+                    ConfigConstants.setPdfPrintDisableValue(pdfPrintDisable);
                     ConfigConstants.setPdfDownloadDisableValue(pdfDownloadDisable);
+                    ConfigConstants.setPdfBookmarkDisableValue(pdfBookmarkDisable);
                     ConfigConstants.setFileUploadDisableValue(fileUploadDisable);
+                    ConfigConstants.setTifPreviewTypeValue(tifPreviewType);
                     setWatermarkConfig(properties);
                     bufferedReader.close();
                     fileReader.close();

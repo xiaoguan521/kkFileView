@@ -1,16 +1,17 @@
 package cn.keking.web.filter;
 
 import cn.keking.config.ConfigConstants;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.util.Base64Utils;
-import org.springframework.util.FileCopyUtils;
-
-import javax.servlet.*;
+import cn.keking.utils.WebUtils;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.util.FileCopyUtils;
 
 /**
  * @author chenjh
@@ -34,11 +35,8 @@ public class TrustHostFilter implements Filter {
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-        String url = getSourceUrl(request);
-        if(url != null){
-            url = new String(Base64Utils.decodeFromString(url), StandardCharsets.UTF_8);
-        }
-        String host = getHost(url);
+        String url = WebUtils.getSourceUrl(request);
+        String host = WebUtils.getHost(url);
         if (host != null &&!ConfigConstants.getTrustHostSet().isEmpty() && !ConfigConstants.getTrustHostSet().contains(host)) {
             String html = this.notTrustHost.replace("${current_host}", host);
             response.getWriter().write(html);
@@ -52,28 +50,4 @@ public class TrustHostFilter implements Filter {
 
     }
 
-    private String getSourceUrl(ServletRequest request) {
-        String url = request.getParameter("url");
-        String currentUrl = request.getParameter("currentUrl");
-        String urlPath = request.getParameter("urlPath");
-        if (StringUtils.isNotBlank(url)) {
-            return url;
-        }
-        if (StringUtils.isNotBlank(currentUrl)) {
-            return currentUrl;
-        }
-        if (StringUtils.isNotBlank(urlPath)) {
-            return urlPath;
-        }
-        return null;
-    }
-
-    private String getHost(String urlStr) {
-        try {
-            URL url = new URL(urlStr);
-            return url.getHost().toLowerCase();
-        } catch (MalformedURLException ignored) {
-        }
-        return null;
-    }
 }

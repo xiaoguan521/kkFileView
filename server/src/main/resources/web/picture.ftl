@@ -3,9 +3,9 @@
 <head>
     <meta charset="utf-8" />
     <title>图片预览</title>
+    <#include "*/commonHeader.ftl">
     <link rel="stylesheet" href="css/viewer.min.css">
     <script src="js/viewer.min.js"></script>
-    <#include "*/commonHeader.ftl">
     <style>
         body {
             background-color: #404040;
@@ -24,7 +24,7 @@
         <#else>
             <#assign img="${baseUrl}${img}">
         </#if>
-        <li><img id="${img}"  url="${img}" src="${img}" width="1px" height="1px"></li>
+        <li><img id="${img}"  url="${img}" src="${img}" style="display: none"></li>
     </#list>
 </ul>
 

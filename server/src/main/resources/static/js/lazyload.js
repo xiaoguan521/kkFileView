@@ -21,6 +21,7 @@ function checkImgs() {
 function loadImg(el) {
     var source = el.getAttribute("data-src");
     el.src = source;
+
 }
 // var mustRun = 500
 // function throttle(fn, mustRun) {

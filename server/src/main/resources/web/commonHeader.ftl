@@ -1,11 +1,6 @@
-
-
-<link rel="stylesheet" href="bootstrap/css/bootstrap.min.css"/>
-<script src="js/jquery-3.0.0.min.js" type="text/javascript"></script>
-<script src="js/jquery.form.min.js" type="text/javascript"></script>
-<script src="bootstrap/js/bootstrap.min.js" type="text/javascript"></script>
+<#setting classic_compatible=true>
+<link rel="icon" href="./favicon.ico" type="image/x-icon">
 <script src="js/watermark.js" type="text/javascript"></script>
-<script src="js/base64.min.js" type="text/javascript"></script>
 
 <script>
     /**
@@ -32,8 +27,8 @@
             });
         }
     }
-
 </script>
+
 <style>
     * {
         margin: 0;
@@ -44,6 +39,4 @@
         height: 100%;
         width: 100%;
     }
-
 </style>
-

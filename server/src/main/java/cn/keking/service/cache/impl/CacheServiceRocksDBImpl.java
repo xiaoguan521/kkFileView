@@ -1,7 +1,7 @@
 package cn.keking.service.cache.impl;
 
 import cn.keking.service.cache.CacheService;
-import org.artofsolving.jodconverter.util.ConfigUtils;
+import cn.keking.utils.ConfigUtils;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.slf4j.Logger;
@@ -177,6 +177,7 @@ public class CacheServiceRocksDBImpl implements CacheService {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Map<String, String> getMediaConvertCache() {
         Map<String, String> result = new HashMap<>();
         try{
@@ -199,6 +200,7 @@ public class CacheServiceRocksDBImpl implements CacheService {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public String getMediaConvertCache(String key) {
         String result = "";
         try{

@@ -31,8 +31,7 @@ public class CompressFilePreviewImpl implements FilePreview {
     @Override
     public String filePreviewHandle(String url, Model model, FileAttribute fileAttribute) {
         String fileName=fileAttribute.getName();
-        String suffix=fileAttribute.getSuffix();
-        String fileTree = null;
+        String fileTree;
         // 判断文件名是否存在(redis缓存读取)
         if (!StringUtils.hasText(fileHandlerService.getConvertedFile(fileName))  || !ConfigConstants.isCacheEnabled()) {
             ReturnResponse<String> response = DownloadUtils.downLoad(fileAttribute, fileName);
@@ -40,15 +39,12 @@ public class CompressFilePreviewImpl implements FilePreview {
                 return otherFilePreview.notSupportedFile(model, fileAttribute, response.getMsg());
             }
             String filePath = response.getContent();
-            if ("zip".equalsIgnoreCase(suffix) || "jar".equalsIgnoreCase(suffix) || "gzip".equalsIgnoreCase(suffix)) {
-                fileTree = compressFileReader.readZipFile(filePath, fileName);
-            } else if ("rar".equalsIgnoreCase(suffix)) {
-                fileTree = compressFileReader.unRar(filePath, fileName);
-            } else if ("7z".equalsIgnoreCase(suffix)) {
-                fileTree = compressFileReader.read7zFile(filePath, fileName);
-            }
-            if (fileTree != null && !"null".equals(fileTree) && ConfigConstants.isCacheEnabled()) {
-                fileHandlerService.addConvertedFile(fileName, fileTree);
+            fileTree = compressFileReader.unRar(filePath, fileName);
+            if (fileTree != null && !"null".equals(fileTree)) {
+                if (ConfigConstants.isCacheEnabled()) {
+                    // 加入缓存
+                    fileHandlerService.addConvertedFile(fileName, fileTree);
+                }
             }
         } else {
             fileTree = fileHandlerService.getConvertedFile(fileName);
@@ -57,7 +53,7 @@ public class CompressFilePreviewImpl implements FilePreview {
             model.addAttribute("fileTree", fileTree);
             return COMPRESS_FILE_PREVIEW_PAGE;
         } else {
-            return otherFilePreview.notSupportedFile(model, fileAttribute, "压缩文件类型不受支持，尝试在压缩的时候选择RAR4格式");
+            return otherFilePreview.notSupportedFile(model, fileAttribute, "压缩文件类型不受支持");
         }
     }
 }

@@ -3,10 +3,13 @@ package cn.keking.utils;
 import cn.keking.config.ConfigConstants;
 import cn.keking.model.FileAttribute;
 import cn.keking.model.ReturnResponse;
+import cn.keking.service.FileHandlerService;
 import io.mola.galimatias.GalimatiasParseException;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
+import org.springframework.web.util.HtmlUtils;
 
 import java.io.*;
 import java.net.*;
@@ -32,22 +35,41 @@ public class DownloadUtils {
      * @return 本地文件绝对路径
      */
     public static ReturnResponse<String> downLoad(FileAttribute fileAttribute, String fileName) {
-        String urlStr = fileAttribute.getUrl();
+        // 忽略ssl证书
+        try {
+            SslUtils.ignoreSsl();
+        } catch (Exception e) {
+            logger.error("忽略SSL证书异常:", e);
+        }
+        String urlStr = fileAttribute.getUrl().replaceAll("\\+", "%20");
         ReturnResponse<String> response = new ReturnResponse<>(0, "下载成功!!!", "");
         String realPath = DownloadUtils.getRelFilePath(fileName, fileAttribute);
+        if(!StringUtils.hasText(realPath)){
+            response.setCode(1);
+            response.setContent(null);
+            response.setMsg("下载失败:文件名不合法!" + urlStr);
+            return response;
+        }
+        if(realPath.equals("cunzhai")){
+            response.setContent(fileDir + fileName);
+            response.setMsg(fileName);
+            return response;
+        }
         try {
             URL url = WebUtils.normalizedURL(urlStr);
-            if (isHttpUrl(url)) {
-                File realFile = new File(realPath);
-                FileUtils.copyURLToFile(url,realFile);
-            } else if (isFtpUrl(url)) {
-                String ftpUsername = WebUtils.getUrlParameterReg(fileAttribute.getUrl(), URL_PARAM_FTP_USERNAME);
-                String ftpPassword = WebUtils.getUrlParameterReg(fileAttribute.getUrl(), URL_PARAM_FTP_PASSWORD);
-                String ftpControlEncoding = WebUtils.getUrlParameterReg(fileAttribute.getUrl(), URL_PARAM_FTP_CONTROL_ENCODING);
-                FtpUtils.download(fileAttribute.getUrl(), realPath, ftpUsername, ftpPassword, ftpControlEncoding);
-            } else {
-                response.setCode(1);
-                response.setMsg("url不能识别url" + urlStr);
+            if (!fileAttribute.getSkipDownLoad()) {
+                if (isHttpUrl(url)) {
+                    File realFile = new File(realPath);
+                    FileUtils.copyURLToFile(url, realFile);
+                } else if (isFtpUrl(url)) {
+                    String ftpUsername = WebUtils.getUrlParameterReg(fileAttribute.getUrl(), URL_PARAM_FTP_USERNAME);
+                    String ftpPassword = WebUtils.getUrlParameterReg(fileAttribute.getUrl(), URL_PARAM_FTP_PASSWORD);
+                    String ftpControlEncoding = WebUtils.getUrlParameterReg(fileAttribute.getUrl(), URL_PARAM_FTP_CONTROL_ENCODING);
+                    FtpUtils.download(fileAttribute.getUrl(), realPath, ftpUsername, ftpPassword, ftpControlEncoding);
+                } else {
+                    response.setCode(1);
+                    response.setMsg("url不能识别url" + urlStr);
+                }
             }
             response.setContent(realPath);
             response.setMsg(fileName);
@@ -80,10 +102,20 @@ public class DownloadUtils {
         } else { // 文件后缀不一致时，以type为准(针对simText【将类txt文件转为txt】)
             fileName = fileName.replace(fileName.substring(fileName.lastIndexOf(".") + 1), type);
         }
+        // 判断是否非法地址
+        if (KkFileUtils.isIllegalFileName(fileName)) {
+            return null;
+        }
         String realPath = fileDir + fileName;
         File dirFile = new File(fileDir);
         if (!dirFile.exists() && !dirFile.mkdirs()) {
             logger.error("创建目录【{}】失败,可能是权限不够，请检查", fileDir);
+        }
+        // 文件已在本地存在，跳过文件下载
+        File realFile = new File(realPath);
+        if (realFile.exists()) {
+            fileAttribute.setSkipDownLoad(true);
+            return "cunzhai";
         }
         return realPath;
     }

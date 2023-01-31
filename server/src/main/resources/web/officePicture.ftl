@@ -3,8 +3,8 @@
 <head>
     <meta charset="utf-8" />
     <title>PDF图片预览</title>
-    <script src="js/lazyload.js"></script>
     <#include "*/commonHeader.ftl">
+    <script src="js/lazyload.js"></script>
     <style>
         body {
             background-color: #404040;
@@ -14,7 +14,18 @@
             height: 100%;
         }
         .img-area {
-            text-align: center
+            text-align: center;
+        }
+        img {
+            max-width: 98%;
+            margin:0 auto;
+            border-radius:3px;
+            box-shadow:rgba(0,0,0,0.15) 0 0 8px;
+            background:#FBFBFB;
+            border:1px solid #ddd;
+            margin:1px auto;
+            margin-left: 15px;
+            padding:5px;
         }
 
     </style>
